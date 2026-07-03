@@ -146,11 +146,11 @@ Participants judge whether the two center patches are physically identical or ph
 
 Response keys:
 
-F
+Y
 
 Same
 
-J
+N
 
 Different
 
