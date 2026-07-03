@@ -1,0 +1,804 @@
+from psychopy import visual, core, event, gui
+from psychopy.hardware import keyboard
+
+import numpy as np
+import pandas as pd
+import random
+import glob
+import os
+
+# =====================================================
+# Study 2 Pilot v1.0
+# Simultaneous Color Contrast
+# Compensation Experiment
+#
+# Author:
+# Gong Li
+#
+# =====================================================
+
+# =====================================================
+# Participant Information
+# =====================================================
+
+info = {
+    "Participant":"",
+    "Age":"",
+    "Gender":""
+}
+
+dlg = gui.DlgFromDict(
+    dictionary=info,
+    title="Study 2 - Compensation"
+)
+
+if not dlg.OK:
+    core.quit()
+
+participant = info["Participant"]
+
+# =====================================================
+# Window
+# =====================================================
+
+win = visual.Window(
+    fullscr=True,
+    units="pix",
+    color=(0,0,0),
+    checkTiming=False,
+    waitBlanking=True
+)
+
+kb = keyboard.Keyboard()
+
+mouse = event.Mouse(
+    visible=False,
+    win=win
+)
+
+# =====================================================
+# LAB → RGB
+# =====================================================
+
+def lab_to_rgb(L,a,b):
+
+    fy=(L+16)/116
+    fx=fy+a/500
+    fz=fy-b/200
+
+    eps=0.008856
+    kap=903.3
+
+    xyz=[]
+
+    for f in [fx,fy,fz]:
+
+        if f**3>eps:
+            xyz.append(f**3)
+
+        else:
+            xyz.append((116*f-16)/kap)
+
+    Xn=95.047
+    Yn=100.0
+    Zn=108.883
+
+    X=xyz[0]*Xn
+    Y=xyz[1]*Yn
+    Z=xyz[2]*Zn
+
+    X/=100
+    Y/=100
+    Z/=100
+
+    r=3.2406*X-1.5372*Y-0.4986*Z
+    g=-0.9689*X+1.8758*Y+0.0415*Z
+    bb=0.0557*X-0.2040*Y+1.0570*Z
+
+    rgb=np.array([r,g,bb])
+
+    rgb=np.where(
+        rgb>0.0031308,
+        1.055*np.power(rgb,1/2.4)-0.055,
+        12.92*rgb
+    )
+
+    rgb=np.clip(rgb,0,1)
+
+    return rgb
+
+# =====================================================
+# D2 Axis
+# =====================================================
+
+LSTAR = 75
+
+START = np.array([5.0,-27.5])
+
+END = np.array([8.0,-24.5])
+
+d2_axis = END-START
+
+d2_axis = d2_axis/np.linalg.norm(d2_axis)
+
+# =====================================================
+# Anchor Colors
+# =====================================================
+
+ANCHORS=[
+
+    np.array([4.0,-29.0]),
+
+    np.array([5.0,-28.0]),
+
+    np.array([6.0,-27.0]),
+
+    np.array([7.0,-26.0]),
+
+    np.array([8.0,-25.0])
+
+]
+
+# =====================================================
+# Surround Colors
+# =====================================================
+
+LEFT_SURROUND=np.array([-60,25])
+
+RIGHT_SURROUND=np.array([60,25])
+
+# =====================================================
+# Read Study1 Calibration
+# =====================================================
+
+# csv_name=f"{participant}_TaskB_v1.csv"
+
+# if not os.path.exists(csv_name):
+
+#     dlg=gui.Dlg(title="Calibration Missing")
+
+#     dlg.addText(
+#         f"Cannot find\n\n{csv_name}"
+#     )
+
+#     dlg.show()
+
+#     core.quit()
+
+# df=pd.read_csv(csv_name)
+
+# delta_illusion=df["illusion"].mean()
+
+# print("----------------------------------")
+# print("Participant :",participant)
+# print("Mean illusion :",delta_illusion)
+# print("----------------------------------")
+
+# =====================================================
+# Temporary Illusion Value (Pilot Only)
+# =====================================================
+
+delta_illusion = 8.5
+
+print("----------------------------------")
+print("Pilot Mode")
+print("delta_illusion =", delta_illusion)
+print("----------------------------------")
+
+# =====================================================
+# Compensation Levels
+# =====================================================
+
+COMPENSATION_LEVELS=[
+
+    0.5,
+
+    1.0,
+
+    1.5
+
+]
+
+# =====================================================
+# Experimental Conditions
+# =====================================================
+
+CONDITIONS=[
+
+    "Control",
+
+    "Illusion",
+
+    "Compensation_0.5",
+
+    "Compensation_1.0",
+
+    "Compensation_1.5"
+
+]
+
+print("Conditions Loaded")
+
+# =====================================================
+# Layout
+# =====================================================
+
+LEFT_POS=(-500,0)
+
+RIGHT_POS=(500,0)
+
+SURROUND_SIZE=420
+
+CENTER_SIZE=70
+
+# =====================================================
+# Stimuli
+# =====================================================
+
+left_surround = visual.Rect(
+    win,
+    width=SURROUND_SIZE,
+    height=SURROUND_SIZE,
+    pos=LEFT_POS,
+    lineColor=None
+)
+
+right_surround = visual.Rect(
+    win,
+    width=SURROUND_SIZE,
+    height=SURROUND_SIZE,
+    pos=RIGHT_POS,
+    lineColor=None
+)
+
+left_center = visual.Rect(
+    win,
+    width=CENTER_SIZE,
+    height=CENTER_SIZE,
+    pos=LEFT_POS,
+    lineColor=None
+)
+
+right_center = visual.Rect(
+    win,
+    width=CENTER_SIZE,
+    height=CENTER_SIZE,
+    pos=RIGHT_POS,
+    lineColor=None
+)
+
+fixation = visual.TextStim(
+    win,
+    text="+",
+    color="white",
+    height=36
+)
+
+# =====================================================
+# Convert surround colors
+# =====================================================
+
+left_surround.fillColor = lab_to_rgb(
+    LSTAR,
+    LEFT_SURROUND[0],
+    LEFT_SURROUND[1]
+)*2-1
+
+right_surround.fillColor = lab_to_rgb(
+    LSTAR,
+    RIGHT_SURROUND[0],
+    RIGHT_SURROUND[1]
+)*2-1
+
+# =====================================================
+# Trial Builder
+# =====================================================
+
+REPEAT_PER_CONDITION = 8
+
+trials = []
+
+for anchor_id, anchor in enumerate(ANCHORS):
+
+    # ------------------------------
+    # Control
+    # ------------------------------
+
+    for i in range(REPEAT_PER_CONDITION):
+
+        trials.append({
+
+            "condition":"Control",
+
+            "anchor_id":anchor_id+1,
+
+            "anchor":anchor,
+
+            "physical_shift":0,
+
+            "surround":"neutral"
+
+        })
+
+    # ------------------------------
+    # Illusion
+    # ------------------------------
+
+    for i in range(REPEAT_PER_CONDITION):
+
+        trials.append({
+
+            "condition":"Illusion",
+
+            "anchor_id":anchor_id+1,
+
+            "anchor":anchor,
+
+            "physical_shift":0,
+
+            "surround":"illusion"
+
+        })
+
+    # ------------------------------
+    # Compensation
+    # ------------------------------
+
+    for level in COMPENSATION_LEVELS:
+
+        for i in range(REPEAT_PER_CONDITION):
+
+            trials.append({
+
+                "condition":f"Compensation_{level}",
+
+                "anchor_id":anchor_id+1,
+
+                "anchor":anchor,
+
+                "physical_shift":level*delta_illusion,
+
+                "surround":"illusion"
+
+            })
+
+# =====================================================
+# Shuffle
+# =====================================================
+
+random.shuffle(trials)
+
+N_TRIALS = len(trials)
+
+print("----------------------------------")
+print("Trials Generated")
+print("Total Trials :",N_TRIALS)
+print("----------------------------------")
+
+# =====================================================
+# Trial Preview
+# =====================================================
+
+print(trials[:5])
+
+# =====================================================
+# Helper Function
+# =====================================================
+
+def compute_right_center(anchor, shift):
+
+    """
+    Move along D2 axis
+    """
+
+    return anchor + shift*d2_axis
+
+# =====================================================
+# Results Container
+# =====================================================
+
+results = []
+
+# =====================================================
+# Instructions
+# =====================================================
+
+instruction = visual.TextStim(
+
+    win,
+
+    text="""
+Study 2
+
+Judge whether the TWO CENTER PATCHES
+are physically the SAME or DIFFERENT.
+
+Ignore the surrounding colors.
+
+F = SAME
+
+J = DIFFERENT
+
+Press SPACE to begin.
+""",
+
+    color="white",
+
+    height=30,
+
+    font="Arial"
+
+)
+
+instruction.draw()
+
+win.flip()
+
+event.waitKeys(keyList=["space"])
+
+# =====================================================
+# Main Experiment
+# =====================================================
+
+for trial_index, trial in enumerate(trials):
+
+    anchor = trial["anchor"]
+
+    condition = trial["condition"]
+
+    shift = trial["physical_shift"]
+
+    surround = trial["surround"]
+
+    # ----------------------------------------
+    # Surround
+    # ----------------------------------------
+
+    if surround == "neutral":
+
+        grey = lab_to_rgb(LSTAR,0,0)*2-1
+
+        left_surround.fillColor = grey
+
+        right_surround.fillColor = grey
+
+    else:
+
+        left_surround.fillColor = lab_to_rgb(
+
+            LSTAR,
+
+            LEFT_SURROUND[0],
+
+            LEFT_SURROUND[1]
+
+        )*2-1
+
+        right_surround.fillColor = lab_to_rgb(
+
+            LSTAR,
+
+            RIGHT_SURROUND[0],
+
+            RIGHT_SURROUND[1]
+
+        )*2-1
+
+    # ----------------------------------------
+    # Center Colors
+    # ----------------------------------------
+
+    left_lab = anchor
+
+    right_lab = compute_right_center(
+
+        anchor,
+
+        shift
+
+    )
+
+    left_center.fillColor = lab_to_rgb(
+
+        LSTAR,
+
+        left_lab[0],
+
+        left_lab[1]
+
+    )*2-1
+
+    right_center.fillColor = lab_to_rgb(
+
+        LSTAR,
+
+        right_lab[0],
+
+        right_lab[1]
+
+    )*2-1
+
+    # ----------------------------------------
+    # Fixation
+    # ----------------------------------------
+
+    fixation.draw()
+
+    win.flip()
+
+    core.wait(
+
+        random.uniform(
+
+            1.0,
+
+            1.5
+
+        )
+
+    )
+
+    # ----------------------------------------
+    # Stimulus
+    # ----------------------------------------
+
+    stim_clock = core.Clock()
+
+    responded = False
+
+    response = None
+
+    rt = None
+
+    while not responded:
+
+        left_surround.draw()
+
+        right_surround.draw()
+
+        left_center.draw()
+
+        right_center.draw()
+
+        fixation.draw()
+
+        trial_text = visual.TextStim(
+
+            win,
+
+            text=f"Trial {trial_index+1}/{N_TRIALS}",
+
+            pos=(0,340),
+
+            color="white",
+
+            height=22
+
+        )
+
+        trial_text.draw()
+
+        win.flip()
+
+        keys = event.getKeys()
+
+        if "escape" in keys:
+
+            win.close()
+
+            core.quit()
+
+        if "f" in keys:
+
+            response = "Same"
+
+            rt = stim_clock.getTime()
+
+            responded = True
+
+        if "j" in keys:
+
+            response = "Different"
+
+            rt = stim_clock.getTime()
+
+            responded = True
+
+    # ----------------------------------------
+    # Correct Answer
+    # ----------------------------------------
+
+    if shift == 0:
+
+        correct = "Same"
+
+    else:
+
+        correct = "Different"
+
+    accuracy = int(response == correct)
+
+    # ----------------------------------------
+    # Confidence
+    # ----------------------------------------
+
+    confidence_screen = visual.TextStim(
+
+        win,
+
+        text="""
+Confidence
+
+1 = Very Low
+
+2 = Low
+
+3 = High
+
+4 = Very High
+""",
+
+        color="white",
+
+        height=28
+
+    )
+
+    conf_clock = core.Clock()
+
+    confidence = None
+
+    while confidence is None:
+
+        confidence_screen.draw()
+
+        win.flip()
+
+        keys = event.getKeys()
+
+        if "escape" in keys:
+
+            win.close()
+
+            core.quit()
+
+        for k in ["1","2","3","4"]:
+
+            if k in keys:
+
+                confidence = int(k)
+
+                rt_conf = conf_clock.getTime()
+
+                break
+
+    # ----------------------------------------
+    # Save
+    # ----------------------------------------
+
+    results.append({
+
+        "participant":participant,
+
+        "trial":trial_index+1,
+
+        "condition":condition,
+
+        "anchor_id":trial["anchor_id"],
+
+        "illusion_used":delta_illusion,
+
+        "physical_shift":shift,
+
+        "response":response,
+
+        "correct_answer":correct,
+
+        "accuracy":accuracy,
+
+        "confidence":confidence,
+
+        "rt_response":round(rt,3),
+
+        "rt_confidence":round(rt_conf,3)
+
+    })
+
+    # ----------------------------------------
+    # ISI
+    # ----------------------------------------
+
+    win.flip()
+
+    core.wait(0.8)
+
+# =====================================================
+# Save Data
+# =====================================================
+
+df = pd.DataFrame(results)
+
+filename = f"{participant}_Study2_Pilot_v1.csv"
+
+df.to_csv(
+    filename,
+    index=False
+)
+
+# =====================================================
+# Summary Statistics
+# =====================================================
+
+overall_acc = df["accuracy"].mean()
+
+overall_conf = df["confidence"].mean()
+
+condition_summary = (
+    df
+    .groupby("condition")
+    [["accuracy","confidence"]]
+    .mean()
+    .round(3)
+)
+
+print("\n==============================")
+print("Study 2 Summary")
+print("==============================")
+print(condition_summary)
+print("==============================")
+
+# =====================================================
+# End Screen
+# =====================================================
+
+summary_text = f"""
+Study 2 Finished
+
+Trials Completed
+
+{len(df)}
+
+Overall Accuracy
+
+{overall_acc:.2f}
+
+Mean Confidence
+
+{overall_conf:.2f}
+
+Data saved as
+
+{filename}
+
+Press SPACE to quit
+"""
+
+summary = visual.TextStim(
+
+    win,
+
+    text=summary_text,
+
+    color="white",
+
+    height=30,
+
+    font="Arial"
+
+)
+
+summary.draw()
+
+win.flip()
+
+event.waitKeys(
+    keyList=["space"]
+)
+
+# =====================================================
+# Close
+# =====================================================
+
+win.close()
+
+core.quit()
