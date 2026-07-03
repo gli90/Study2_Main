@@ -415,9 +415,9 @@ are physically the SAME or DIFFERENT.
 
 Ignore the surrounding colors.
 
-F = SAME
+Y = SAME
 
-J = DIFFERENT
+N = DIFFERENT
 
 Press SPACE to begin.
 """,
@@ -588,7 +588,7 @@ for trial_index, trial in enumerate(trials):
 
             core.quit()
 
-        if "f" in keys:
+        if "y" in keys:
 
             response = "Same"
 
@@ -596,7 +596,7 @@ for trial_index, trial in enumerate(trials):
 
             responded = True
 
-        if "j" in keys:
+        if "n" in keys:
 
             response = "Different"
 
