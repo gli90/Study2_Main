@@ -1,4 +1,4 @@
-# Study 2 — Confidence under Illusion & Compensation
+# Metacognitive Confidence under Illusion & Compensation
 
 
 ## Purpose
