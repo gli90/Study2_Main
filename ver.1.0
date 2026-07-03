@@ -408,16 +408,21 @@ instruction = visual.TextStim(
     win,
 
     text="""
-Study 2
+
+GAME for Same or Different
+
 
 Judge whether the TWO CENTER PATCHES
+
 are physically the SAME or DIFFERENT.
+
 
 Ignore the surrounding colors.
 
 Y = SAME
 
 N = DIFFERENT
+
 
 Press SPACE to begin.
 """,
